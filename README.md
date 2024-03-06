@@ -10,3 +10,7 @@ curl -sSL https://raw.githubusercontent.com/AungThuMyint/FreeRADIUS-daloRADIUS/m
 ```
 
 ### Installation Finished
+<img src=https://raw.githubusercontent.com/AungThuMyint/FreeRADIUS-daloRADIUS/main/Finished.png img>
+
+### Web UI
+<img src=https://raw.githubusercontent.com/AungThuMyint/FreeRADIUS-daloRADIUS/main/daloRADIUS.png img>
