@@ -160,6 +160,10 @@ systemctl restart apache2
 # Get the local IP address
 local_ip=$(hostname -I | awk '{print $1}')
 
+# Change Listen IP to Current Host IP
+sudo sed -i "s/ipaddr = .*/ipaddr = $local_ip/" /etc/freeradius/3.0/sites-enabled/default
+sudo sed -i "s/ipaddr = .*/ipaddr = $local_ip/" /etc/freeradius/3.0/sites-enabled/inner-tunnel
+
 echo
 echo "daloRADIUS URL : http://$local_ip:8000/"
 echo "daloRADIUS Username : administrator"
