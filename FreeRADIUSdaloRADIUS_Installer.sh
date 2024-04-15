@@ -86,11 +86,43 @@ Listen \${DALORADIUS_USERS_PORT}
 Listen \${DALORADIUS_OPERATORS_PORT}
 EOF
 
+# Define the output folder
+output_folder="/root/dalo_cert"
+
+# Check if the output folder already exists
+if [ ! -d "$output_folder" ]; then
+    # Create the output folder if it doesn't exist
+    mkdir -p "$output_folder"
+    echo "Output folder created: $output_folder"
+else
+    echo "Output folder already exists: $output_folder"
+fi
+
+# Generate RSA private key
+openssl genrsa -out "$output_folder/dalo.key" 2048
+
+# Generate Certificate Signing Request (CSR)
+openssl req -new -key "$output_folder/dalo.key" -out "$output_folder/dalo.csr" -subj "/C=MM/ST=Yangon/L=Yangon/O=Dalo/OU=Dalo/CN=dalo.com"
+
+# Generate Self-Signed Certificate (valid for 700 days)
+openssl x509 -req -days 700 -in "$output_folder/dalo.csr" -signkey "$output_folder/dalo.key" -out "$output_folder/dalo.crt"
+
+# Remove the CSR file
+rm "$output_folder/dalo.csr"
+
+sudo a2enmod ssl
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+
 # Configure Apache2 virtual hosts for daloRADIUS operators and users
 cat <<EOF > /etc/apache2/sites-available/operators.conf
 <VirtualHost *:\${DALORADIUS_OPERATORS_PORT}>
   ServerAdmin \${DALORADIUS_SERVER_ADMIN}
   DocumentRoot \${DALORADIUS_ROOT_DIRECTORY}/app/operators
+
+  SSLEngine on
+  SSLCertificateFile /root/dalo_cert/dalo.crt
+  SSLCertificateKeyFile /root/dalo_cert/dalo.key
   
   <Directory \${DALORADIUS_ROOT_DIRECTORY}/app/operators>
     Options -Indexes +FollowSymLinks
@@ -112,6 +144,10 @@ cat <<EOF > /etc/apache2/sites-available/users.conf
   ServerAdmin \${DALORADIUS_SERVER_ADMIN}
   DocumentRoot \${DALORADIUS_ROOT_DIRECTORY}/app/users
 
+  SSLEngine on
+  SSLCertificateFile /root/dalo_cert/dalo.crt
+  SSLCertificateKeyFile /root/dalo_cert/dalo.key
+
   <Directory \${DALORADIUS_ROOT_DIRECTORY}/app/users>
     Options -Indexes +FollowSymLinks
     AllowOverride None
@@ -126,6 +162,10 @@ cat <<EOF > /etc/apache2/sites-available/users.conf
   CustomLog \${APACHE_LOG_DIR}/daloradius/users/access.log combined
 </VirtualHost>
 EOF
+
+sudo a2ensite users.conf
+sudo a2ensite operators.conf
+sudo systemctl restart apache2
 
 # Configure daloRADIUS settings
 cd /var/www/daloradius/app/common/includes
@@ -165,7 +205,7 @@ sudo sed -i "s/ipaddr = .*/ipaddr = $local_ip/" /etc/freeradius/3.0/sites-enable
 sudo sed -i "s/ipaddr = .*/ipaddr = $local_ip/" /etc/freeradius/3.0/sites-enabled/inner-tunnel
 
 echo
-echo "daloRADIUS URL : http://$local_ip:8000/"
+echo "daloRADIUS URL : https://$local_ip:8000/"
 echo "daloRADIUS Username : administrator"
 echo "daloRADIUS Password : radius"
 echo
